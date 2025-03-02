@@ -5,7 +5,6 @@
 #include <queue>
 #include <vector>
 #include <filesystem>
-#include <regex>
 #include <fstream>
 #include <iostream>
 
@@ -39,15 +38,9 @@ public:
 
 class file_query {
 public:
-    file_query(std::string rx, std::string const &query, std::vector<std::string> &loc,
-            std::vector<std::string> &deps, file_statistics const &fst):
-            include_rx(rx), loc_file(loc),deps_file(deps), fst(fst) {
-        queued_file.insert(query);
-        include_query.push(query);
-    }
     file_query(std::string const &query, std::vector<std::string> &loc,
             std::vector<std::string> &deps, file_statistics const &fst):
-            include_rx(R"(#include\s*\"([^\"]+)\"\s*(//.*)?)"), loc_file(loc),
+            include_rx("#include \""), loc_file(loc),
             deps_file(deps), fst(fst) {
         queued_file.insert(query);
         include_query.push(query);
@@ -88,16 +81,18 @@ private:
         }
         std::string line;
         while (std::getline(ifs, line)) {
-            std::smatch match;
-            if (std::regex_match(line, match, include_rx)) {
-                push_file(match[1]);
+            auto start = line.find("#include \"");
+            if (start != std::string::npos) {
+                start += 10;
+                size_t end = line.find("\"", start);
+                push_file(line.substr(start, end - start));
             }
         }
     }
     std::set<std::string> queued_file;
     std::queue<std::string> include_query;
     std::vector<std::string> &loc_file, &deps_file;
-    std::regex include_rx;
+    std::string include_rx;
     file_statistics const &fst;
 };
 
